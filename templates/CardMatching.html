@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Card Match</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%}
+body{background:url('/static/images/nightsky.jpg') center center/cover no-repeat fixed;background-color:#000008;color:#e2e8f0;font-family:'Rajdhani',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background:rgba(0,0,8,0.38);z-index:0;pointer-events:none}
+.stars{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:0.25;animation:twinkle var(--d) infinite var(--dl)}
+@keyframes twinkle{0%,100%{opacity:0.08}50%{opacity:0.55}}
+
+/* ─── Layout ─────────────────────────────────────── */
+.wrap{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
+  gap:clamp(6px,1.2vh,14px);padding:16px 20px;width:100%;max-width:1200px}
+.title{font-family:'Orbitron',monospace;font-size:clamp(1.3rem,3.5vw,2.2rem);font-weight:900;
+  letter-spacing:5px;background:linear-gradient(135deg,#06b6d4,#a855f7);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 18px rgba(6,182,212,0.4))}
+
+/* ─── Setup panel ────────────────────────────────── */
+.setup-panel{background:rgba(14,14,32,0.8);border:1px solid rgba(255,255,255,0.08);
+  border-radius:16px;padding:clamp(20px,4vh,40px) clamp(28px,4vw,48px);
+  backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;
+  gap:22px;box-shadow:0 8px 40px rgba(0,0,0,0.6)}
+.setup-title{font-family:'Orbitron',monospace;font-size:0.85rem;letter-spacing:4px;
+  color:rgba(226,232,240,0.6);text-transform:uppercase}
+.mode-grid{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.mode-btn{font-family:'Orbitron',monospace;font-size:clamp(1.6rem,3.5vw,2.2rem);font-weight:900;
+  width:clamp(76px,11vw,110px);height:clamp(76px,11vw,110px);
+  border:2px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#06b6d4;
+  border-radius:12px;cursor:pointer;transition:all 0.25s;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.mode-btn:hover{border-color:rgba(6,182,212,0.4);background:rgba(6,182,212,0.08);transform:translateY(-4px)}
+.mode-btn.active{border-color:#06b6d4;background:rgba(6,182,212,0.15);box-shadow:0 0 28px rgba(6,182,212,0.2)}
+.mode-btn span{font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:rgba(226,232,240,0.5)}
+.name-inputs{display:flex;flex-direction:column;gap:10px;width:100%;max-width:290px}
+.name-row{display:flex;align-items:center;gap:12px}
+.name-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;box-shadow:0 0 7px currentColor}
+.name-inp{flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;padding:9px 14px;color:#e2e8f0;font-family:'Rajdhani',sans-serif;
+  font-size:1rem;letter-spacing:1px;outline:none;transition:all 0.2s}
+.name-inp:focus{border-color:rgba(6,182,212,0.5);background:rgba(6,182,212,0.05)}
+.start-btn{font-family:'Orbitron',monospace;font-size:0.78rem;letter-spacing:3px;
+  text-transform:uppercase;padding:13px 44px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff;cursor:pointer;
+  transition:all 0.2s;font-weight:700;box-shadow:0 4px 20px rgba(6,182,212,0.3)}
+.start-btn:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(6,182,212,0.4)}
+
+/* ─── Game area ──────────────────────────────────── */
+.game-area{display:none;flex-direction:column;align-items:center;
+  gap:clamp(6px,1.2vh,14px);width:100%}
+.game-area.active{display:flex}
+.hud{display:flex;gap:clamp(8px,1.5vw,18px);flex-wrap:wrap;justify-content:center}
+.player-card{display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:clamp(8px,1.5vh,12px) clamp(14px,1.8vw,22px);
+  background:rgba(14,14,32,0.6);border:2px solid rgba(255,255,255,0.08);
+  border-radius:12px;transition:all 0.3s;min-width:clamp(88px,12vw,130px)}
+.player-card.active{border-color:var(--pc);background:rgba(0,0,0,0.4);box-shadow:0 0 28px var(--pc-glow)}
+.p-name{font-family:'Orbitron',monospace;font-size:0.6rem;letter-spacing:2px;
+  text-transform:uppercase;color:rgba(226,232,240,0.45)}
+.player-card.active .p-name{color:var(--pc)}
+.p-score{font-family:'Orbitron',monospace;font-size:clamp(1.2rem,2.5vw,1.8rem);font-weight:900;color:var(--pc)}
+.p-pairs{font-size:0.7rem;color:rgba(226,232,240,0.35)}
+.turn-lbl{font-family:'Orbitron',monospace;font-size:clamp(0.6rem,1.3vw,0.82rem);
+  letter-spacing:3px;text-transform:uppercase;color:#fbbf24;min-height:22px;
+  text-shadow:0 0 10px rgba(251,191,36,0.3)}
+
+/* ─── Card grid ──────────────────────────────────── */
+/* Card width/height + font sizes are set by JS. Do NOT hardcode them here. */
+.grid{display:grid;perspective:1000px}
+.card{position:relative;cursor:pointer;transform-style:preserve-3d;
+  transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);flex-shrink:0}
+.card.flipped{transform:rotateY(180deg)}
+.card.matched{transform:rotateY(180deg);cursor:default}
+.card-face{position:absolute;inset:0;backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;border-radius:inherit}
+.card-front{background:linear-gradient(135deg,#1a1a3a,#0f0f25);
+  border:2px solid rgba(168,85,247,0.3);box-shadow:0 4px 18px rgba(0,0,0,0.5)}
+.card-back{background:linear-gradient(135deg,#0f0f25,#1a1a3a);
+  border:2px solid var(--match-color,#06b6d4);transform:rotateY(180deg);
+  box-shadow:0 0 18px var(--match-glow,rgba(6,182,212,0.3))}
+.card-symbol{filter:drop-shadow(0 0 7px currentColor);line-height:1}
+.card:hover:not(.flipped):not(.matched){transform:translateY(-3px) scale(1.05)}
+.card.flipped:hover{transform:rotateY(180deg) scale(1.04)}
+
+.status-msg{font-family:'Orbitron',monospace;font-size:clamp(0.62rem,1.3vw,0.82rem);
+  letter-spacing:2px;text-transform:uppercase;min-height:20px;
+  text-align:center;color:rgba(226,232,240,0.45)}
+.status-msg.match{color:#22c55e;filter:drop-shadow(0 0 8px rgba(34,197,94,0.5))}
+.status-msg.miss{color:#ef4444;filter:drop-shadow(0 0 8px rgba(239,68,68,0.5))}
+.btn{font-family:'Orbitron',monospace;font-size:0.72rem;letter-spacing:2px;
+  text-transform:uppercase;padding:9px 22px;border:1px solid rgba(255,255,255,0.15);
+  background:rgba(14,14,32,0.6);color:rgba(226,232,240,0.7);border-radius:8px;
+  cursor:pointer;transition:all 0.2s}
+.btn:hover{background:rgba(255,255,255,0.08);color:#e2e8f0;border-color:rgba(255,255,255,0.3)}
+
+/* ─── Winner overlay ─────────────────────────────── */
+.winner-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:100;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:24px;backdrop-filter:blur(10px)}
+.winner-overlay.show{display:flex}
+.winner-title{font-family:'Orbitron',monospace;font-size:clamp(2rem,6vw,4rem);
+  font-weight:900;letter-spacing:4px;color:#fbbf24;
+  text-shadow:0 0 40px rgba(251,191,36,0.6);
+  animation:winnerPop 0.6s cubic-bezier(0.175,0.885,0.32,1.4)}
+@keyframes winnerPop{0%{transform:scale(0.3);opacity:0}100%{transform:scale(1);opacity:1}}
+.score-board{display:flex;flex-direction:column;gap:12px;background:rgba(14,14,32,0.8);
+  padding:22px 30px;border-radius:16px;border:1px solid rgba(255,255,255,0.08);min-width:260px}
+.score-row{display:flex;align-items:center;gap:14px;font-family:'Orbitron',monospace}
+.score-rank{width:28px;font-size:1.1rem}
+.score-name{flex:1;font-size:0.85rem;letter-spacing:1px}
+.score-val{font-size:1.2rem;font-weight:900}
+/* ── Quick Nav ── */
+.qnav{position:fixed;top:14px;left:14px;z-index:9000;font-family:'Rajdhani',sans-serif}
+.qnav-btn{width:38px;height:38px;background:rgba(14,14,32,0.88);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#e2e8f0;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);transition:all 0.18s;font-size:1.15rem;line-height:1}
+.qnav-btn:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.3);transform:scale(1.05)}
+.qnav-drop{position:absolute;top:46px;left:0;background:rgba(8,8,22,0.97);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px;min-width:178px;display:none;flex-direction:column;gap:2px;box-shadow:0 10px 40px rgba(0,0,0,0.75);backdrop-filter:blur(18px)}
+.qnav.open .qnav-drop{display:flex}
+.qnav-head{font-family:'Orbitron',monospace;font-size:0.52rem;letter-spacing:5px;color:rgba(226,232,240,0.25);padding:5px 10px 9px;text-align:center}
+.qnav-div{height:1px;background:rgba(255,255,255,0.07);margin:3px 0}
+.qnav-link{font-size:0.88rem;letter-spacing:1px;color:rgba(226,232,240,0.6);text-decoration:none;padding:7px 12px;border-radius:7px;display:block;transition:all 0.15s}
+.qnav-link:hover{background:rgba(255,255,255,0.08);color:#e2e8f0}
+.qnav-link.ql-home{color:#fbbf24}
+.qnav-link.ql-home:hover{background:rgba(251,191,36,0.1)}
+.qnav-link.ql-cur{color:#06b6d4;background:rgba(6,182,212,0.08)}
+</style>
+</head>
+<body>
+<nav class="qnav" id="qnav">
+  <button class="qnav-btn" onclick="qnavToggle()" title="Games menu">☰</button>
+  <div class="qnav-drop">
+    <div class="qnav-head">4CADE</div>
+    <div class="qnav-div"></div>
+    <a class="qnav-link ql-home" href="/gameselect">⌂ &nbsp;Home</a>
+    <div class="qnav-div"></div>
+    <a class="qnav-link"        href="/pacman">Pac-Man</a>
+    <a class="qnav-link"        href="/2048">2048</a>
+    <a class="qnav-link"        href="/tictactoe">Tic-Tac-Toe</a>
+    <a class="qnav-link"        href="/memory">Pattern Memory</a>
+    <a class="qnav-link ql-cur" href="/cardmatch">Card Match ✦</a>
+    <a class="qnav-link"        href="/ballmatch">Ball Memory</a>
+  </div>
+</nav>
+<div class="stars" id="stars"></div>
+<div class="wrap">
+  <div class="title">CARD MATCH</div>
+
+  <div class="setup-panel" id="setupPanel">
+    <div class="setup-title">Select Players</div>
+    <div class="mode-grid">
+      <button class="mode-btn active" onclick="setPlayers(2,this)">2<span>Players</span></button>
+      <button class="mode-btn" onclick="setPlayers(3,this)">3<span>Players</span></button>
+      <button class="mode-btn" onclick="setPlayers(4,this)">4<span>Players</span></button>
+    </div>
+    <div class="name-inputs" id="nameInputs"></div>
+    <button class="start-btn" onclick="startGame()">Start Game</button>
+  </div>
+
+  <div class="game-area" id="gameArea">
+    <div class="hud" id="hud"></div>
+    <div class="turn-lbl" id="turnLbl"></div>
+    <div class="grid" id="grid"></div>
+    <div class="status-msg" id="statusMsg"></div>
+    <div style="display:flex;gap:12px">
+      <button class="btn" onclick="resetGame()">New Game</button>
+      <a href="/gameselect"><button class="btn">⌂ Home</button></a>
+    </div>
+  </div>
+</div>
+
+<div class="winner-overlay" id="winnerOverlay">
+  <div class="winner-title" id="winnerTitle"></div>
+  <div class="score-board" id="scoreBoard"></div>
+  <div style="display:flex;gap:12px">
+    <button class="btn" onclick="closeWinner()" style="background:rgba(251,191,36,0.2);border-color:#fbbf24;color:#fbbf24">Play Again</button>
+    <a href="/gameselect"><button class="btn">⌂ Home</button></a>
+  </div>
+</div>
+
+<script>
+/* ── Stars ── */
+const starsEl=document.getElementById('stars');
+for(let i=0;i<80;i++){
+  const s=document.createElement('div');s.className='star';
+  s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${2+Math.random()*4}s;--dl:${Math.random()*4}s`;
+  starsEl.appendChild(s);
+}
+
+const SYMBOLS=['◆','▲','●','★','✦','⬟','⬡','⊕','⊗','⊞','⊠','⊘','⌘','⍟','◈','◉','◍','◎','⌬','⎈','⏣','◐','◑','◒','◓','⊙','⊛','⟁','⎔','◇','△','☆'];
+const COLORS=['#06b6d4','#f43f5e','#22c55e','#fbbf24'];
+const GLOWS =['rgba(6,182,212,0.4)','rgba(244,63,94,0.4)','rgba(34,197,94,0.4)','rgba(251,191,36,0.4)'];
+
+/* ══════════════════════════════════════════════════════
+   SFX — Web Audio API sound engine (no files needed)
+══════════════════════════════════════════════════════ */
+const SFX=(()=>{
+  let ac=null;
+  function getAC(){
+    if(!ac)try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}
+    return ac;
+  }
+  function tone(freq,type,t,dur,vol,endFreq){
+    const a=getAC();if(!a)return;
+    const osc=a.createOscillator(),g=a.createGain();
+    osc.connect(g);g.connect(a.destination);
+    osc.type=type||'sine';
+    osc.frequency.setValueAtTime(freq,t);
+    if(endFreq)osc.frequency.exponentialRampToValueAtTime(endFreq,t+dur);
+    g.gain.setValueAtTime(vol||0.12,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    osc.start(t);osc.stop(t+dur+0.01);
+  }
+  return{
+    /* Soft whoosh when a card flips */
+    flip(){
+      const a=getAC();if(!a)return;
+      const t=a.currentTime;
+      tone(300,'sine',t,0.07,0.07,500);
+    },
+    /* Bright chime on a match — two-tone sparkle */
+    match(){
+      const a=getAC();if(!a)return;
+      const t=a.currentTime;
+      tone(880,'sine',  t,      0.10,0.12);
+      tone(1100,'sine', t+0.06, 0.10,0.10);
+      tone(1320,'sine', t+0.13, 0.12,0.09);
+    },
+    /* Dull thud on a miss */
+    miss(){
+      const a=getAC();if(!a)return;
+      const t=a.currentTime;
+      tone(180,'triangle',t,      0.08,0.10,140);
+      tone(140,'triangle',t+0.09, 0.08,0.07,110);
+    },
+    /* Victory fanfare when a winner is declared */
+    winner(){
+      const a=getAC();if(!a)return;
+      const t=a.currentTime;
+      [[330,0],[415,0.10],[494,0.20],[330,0.32],[494,0.42],[659,0.54]].forEach(([f,d])=>{
+        tone(f,'square',t+d,0.13,0.10);
+      });
+    },
+    /* Short ready jingle when game starts */
+    start(){
+      const a=getAC();if(!a)return;
+      const t=a.currentTime;
+      tone(440,'square',t,      0.06,0.08);
+      tone(550,'square',t+0.07, 0.06,0.07);
+      tone(660,'square',t+0.14, 0.08,0.08);
+    }
+  };
+})();
+
+let numPlayers=2, players=[], currentPlayer=0, cards=[], flipped=[], matchedCount=0, locked=false;
+let activeCols=4; // remembered so resize can re-render
+
+/* ══════════════════════════════════════════════════════════════
+   computeCardSize(cols)
+   Returns the largest card pixel size (square) that fits the
+   viewport given the number of grid columns (rows are implied).
+
+   Strategy:
+     byWidth  = (usable screen width  - total horizontal gaps) / cols
+     byHeight = (usable screen height - total vertical   gaps) / rows
+     result   = min(byWidth, byHeight), clamped to [36, 110]
+   ══════════════════════════════════════════════════════════════ */
+function computeCardSize(cols){
+  const rows   = Math.ceil(cards.length / cols);
+  const GAP    = 8; // px — must match value used in renderGrid
+
+  // ── Width ──
+  const sidePad = 40;
+  const maxW    = Math.min(window.innerWidth - sidePad, 1160);
+  const byWidth = Math.floor((maxW - GAP*(cols-1)) / cols);
+
+  // ── Height ──
+  // Measure sibling elements that share vertical space with the grid.
+  let siblingH = 0;
+  ['title','hud','turnLbl','statusMsg'].forEach(id=>{
+    const el=document.getElementById(id)||document.querySelector('.'+id);
+    if(el) siblingH += el.getBoundingClientRect().height;
+  });
+  // The bottom button row
+  const btnRow=document.querySelector('.game-area > div:last-child');
+  if(btnRow) siblingH += btnRow.getBoundingClientRect().height;
+
+  // Gaps between .wrap children (flexbox gap)
+  const wrapGap = parseFloat(getComputedStyle(document.querySelector('.wrap')).gap)||10;
+  siblingH += wrapGap * 5; // 5 gaps between 6 flex children
+
+  // .wrap top+bottom padding
+  siblingH += 32;
+
+  // Fallback before first layout pass
+  if(siblingH < 80) siblingH = 240;
+
+  const availH   = window.innerHeight - siblingH;
+  const byHeight = Math.floor((availH - GAP*(rows-1)) / rows);
+
+  return Math.max(36, Math.min(byWidth, byHeight, 110));
+}
+
+/* ── Setup ── */
+function setPlayers(n,btn){
+  numPlayers=n;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderNameInputs();
+}
+
+function renderNameInputs(){
+  const container=document.getElementById('nameInputs');
+  container.innerHTML='';
+  for(let i=0;i<numPlayers;i++){
+    const row=document.createElement('div');row.className='name-row';
+    row.innerHTML=`<div class="name-dot" style="background:${COLORS[i]};color:${COLORS[i]}"></div>`
+      +`<input class="name-inp" id="name${i}" value="Player ${i+1}" maxlength="12">`;
+    container.appendChild(row);
+  }
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
+  return arr;
+}
+
+function startGame(){
+  players=[];
+  for(let i=0;i<numPlayers;i++)
+    players.push({
+      name :document.getElementById(`name${i}`).value||`Player ${i+1}`,
+      score:0, pairs:0, color:COLORS[i], glow:GLOWS[i]
+    });
+  currentPlayer=0; matchedCount=0; flipped=[]; locked=false;
+
+  const sizes   ={2:8,  3:18, 4:32};
+  const gridCols={2:4,  3:6,  4:8 };
+  const pairs=sizes[numPlayers];
+  const cols =gridCols[numPlayers];
+
+  const syms=shuffle([...SYMBOLS]).slice(0,pairs);
+  const deck=[];
+  syms.forEach((s,i)=>{
+    const color=COLORS[i%COLORS.length];
+    const glow =GLOWS [i%GLOWS.length];
+    deck.push({id:deck.length,sym:s,color,glow,flipped:false,matched:false});
+    deck.push({id:deck.length,sym:s,color,glow,flipped:false,matched:false});
+  });
+  cards=shuffle(deck);
+
+  document.getElementById('setupPanel').style.display='none';
+  document.getElementById('gameArea').classList.add('active');
+
+  renderHud();
+  // Wait two animation frames so the HUD is painted and measurable
+  // before we use its height to compute card size.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    renderGrid(cols);
+    updateTurn();
+  }));
+  SFX.start();
+}
+
+/* ── HUD ── */
+function renderHud(){
+  const hud=document.getElementById('hud');hud.innerHTML='';
+  players.forEach((p,i)=>{
+    const card=document.createElement('div');
+    card.className='player-card'+(i===currentPlayer?' active':'');
+    card.id=`p${i}`;
+    card.style.setProperty('--pc',p.color);
+    card.style.setProperty('--pc-glow',p.glow);
+    card.innerHTML=`<div class="p-name">${p.name}</div>`
+      +`<div class="p-score">${p.score}</div>`
+      +`<div class="p-pairs">${p.pairs} pairs</div>`;
+    hud.appendChild(card);
+  });
+}
+
+/* ── Grid ── */
+function renderGrid(cols){
+  activeCols=cols;
+  const sz    = computeCardSize(cols);
+  const GAP   = 8;
+  const br    = Math.max(6, Math.floor(sz*0.11))+'px';   // border-radius
+  const symSz = Math.max(11,Math.floor(sz*0.32))+'px';   // symbol on card back
+  const iconSz= Math.max(9, Math.floor(sz*0.26))+'px';   // ◈ on card front
+
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  grid.style.gridTemplateColumns=`repeat(${cols},${sz}px)`;
+  grid.style.gap=GAP+'px';
+
+  cards.forEach((c,i)=>{
+    const card=document.createElement('div');
+    card.className='card'+(c.flipped?' flipped':'')+(c.matched?' matched':'');
+    card.style.cssText=`width:${sz}px;height:${sz}px;border-radius:${br}`;
+    card.dataset.idx=i;
+    card.innerHTML=
+      `<div class="card-face card-front">`
+        +`<span style="font-size:${iconSz};color:rgba(168,85,247,0.42)">◈</span>`
+      +`</div>`
+      +`<div class="card-face card-back" `
+        +`style="--match-color:${c.color};--match-glow:${c.glow}">`
+        +`<div class="card-symbol" style="font-size:${symSz};color:${c.color}">${c.sym}</div>`
+      +`</div>`;
+    card.onclick=()=>flip(i);
+    grid.appendChild(card);
+  });
+}
+
+/* ── Resize: re-render grid if game is active ── */
+let resizeTimer;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{
+    if(!document.getElementById('gameArea').classList.contains('active'))return;
+    renderGrid(activeCols);
+  },120);
+});
+
+/* ── Game logic ── */
+function flip(i){
+  if(locked||cards[i].flipped||cards[i].matched)return;
+  const cardEl=document.querySelectorAll('.card')[i];
+  cards[i].flipped=true;
+  flipped.push({idx:i,card:cards[i],el:cardEl});
+  cardEl.classList.add('flipped');
+  SFX.flip();
+  if(flipped.length===2){
+    locked=true;
+    const[a,b]=flipped;
+    if(a.card.sym===b.card.sym) setTimeout(()=>handleMatch(a,b),400);
+    else                        setTimeout(()=>handleMiss(a,b),820);
+  }
+}
+
+function handleMatch(a,b){
+  const p=players[currentPlayer];
+  a.card.matched=b.card.matched=true;
+  p.pairs++;p.score+=100+(numPlayers*10);
+  matchedCount+=2;
+  [a.el,b.el].forEach(el=>{
+    el.classList.add('matched');
+    const back=el.querySelector('.card-back');
+    if(back){
+      back.style.setProperty('--match-color',p.color);
+      back.style.setProperty('--match-glow',p.glow);
+    }
+  });
+  flipped=[];locked=false;
+  SFX.match();
+  renderHud();
+  setStatus('Match! Go again','match');
+  if(matchedCount===cards.length)setTimeout(showWinner,600);
+}
+
+function handleMiss(a,b){
+  a.card.flipped=b.card.flipped=false;
+  a.el.classList.remove('flipped');
+  b.el.classList.remove('flipped');
+  flipped=[];locked=false;
+  SFX.miss();
+  currentPlayer=(currentPlayer+1)%numPlayers;
+  renderHud();updateTurn();
+  setStatus('No match','miss');
+}
+
+function updateTurn(){
+  document.getElementById('turnLbl').textContent=`${players[currentPlayer].name}'s Turn`;
+  document.getElementById('turnLbl').style.color=players[currentPlayer].color;
+  document.querySelectorAll('.player-card').forEach((c,i)=>c.classList.toggle('active',i===currentPlayer));
+}
+
+function setStatus(txt,cls){
+  const s=document.getElementById('statusMsg');
+  s.textContent=txt;s.className='status-msg'+(cls?' '+cls:'');
+  setTimeout(()=>{if(s.textContent===txt)s.textContent='';},1500);
+}
+
+function showWinner(){
+  const sorted=[...players].sort((a,b)=>b.score-a.score);
+  document.getElementById('winnerTitle').textContent=sorted[0].name+' Wins!';
+  document.getElementById('winnerTitle').style.color=sorted[0].color;
+  const board=document.getElementById('scoreBoard');board.innerHTML='';
+  sorted.forEach((p,i)=>{
+    const row=document.createElement('div');row.className='score-row';
+    row.innerHTML=`<span class="score-rank" style="color:${p.color}">${i===0?'👑':i+1}</span>`
+      +`<span class="score-name" style="color:${p.color}">${p.name}</span>`
+      +`<span class="score-val"  style="color:${p.color}">${p.score}</span>`;
+    board.appendChild(row);
+  });
+  SFX.winner();
+  document.getElementById('winnerOverlay').classList.add('show');
+}
+
+function closeWinner(){
+  document.getElementById('winnerOverlay').classList.remove('show');
+  resetGame();
+}
+
+function resetGame(){
+  cards=[];
+  document.getElementById('gameArea').classList.remove('active');
+  document.getElementById('setupPanel').style.display='flex';
+  document.getElementById('statusMsg').textContent='';
+}
+
+renderNameInputs();
+
+/* ── Quick Nav toggle ── */
+function qnavToggle(){document.getElementById('qnav').classList.toggle('open')}
+document.addEventListener('click',e=>{const n=document.getElementById('qnav');if(n&&!n.contains(e.target))n.classList.remove('open')});
+</script>
+</body>
+</html>

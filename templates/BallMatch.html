@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Ball Memory</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap"
+    rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:100%;height:100%}
+    body{
+      background:url('/static/images/nightsky.jpg') center center/cover no-repeat fixed;
+      background-color:#000008;color:#e2e8f0;font-family:'Rajdhani',sans-serif;
+      display:flex;align-items:center;justify-content:center;
+      min-height:100vh;overflow:hidden
+    }
+    body::before{content:'';position:fixed;inset:0;background:rgba(0,0,8,0.38);z-index:0;pointer-events:none}
+
+    .stars{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+    .star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:0.2;animation:twinkle var(--d) infinite var(--dl)}
+    @keyframes twinkle{0%,100%{opacity:0.06}50%{opacity:0.45}}
+
+    /* ── Wrap ── */
+    .wrap{display:flex;flex-direction:column;align-items:center;gap:clamp(8px,1.5vh,14px);z-index:1;padding:12px 20px;width:100%}
+
+    .title{
+      font-family:'Orbitron',monospace;font-size:clamp(1.2rem,3.5vh,1.8rem);font-weight:900;letter-spacing:4px;
+      background:linear-gradient(135deg,#f43f5e,#a855f7);-webkit-background-clip:text;background-clip:text;
+      -webkit-text-fill-color:transparent;filter:drop-shadow(0 0 18px rgba(244,63,94,0.45))
+    }
+
+    /* ── HUD ── */
+    .hud{display:flex;gap:clamp(16px,3vw,32px);align-items:center;background:rgba(14,14,32,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:clamp(10px,2vh,14px) clamp(24px,3vw,36px);backdrop-filter:blur(10px)}
+    .hud-item{text-align:center}
+    .hud-lbl{font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;color:#f43f5e;margin-bottom:2px;font-weight:700}
+    .hud-val{font-family:'Orbitron',monospace;font-size:clamp(1.1rem,2.5vh,1.5rem);font-weight:700}
+    .lives-row{display:flex;gap:5px}
+    .heart{font-size:1.1rem;transition:all 0.3s}
+    .heart.lost{filter:grayscale(1);opacity:0.22}
+
+    /* ── Style toggle ── */
+    .style-toggle{
+      display:flex;align-items:center;gap:10px;
+      background:rgba(14,14,32,0.7);border:1px solid rgba(255,255,255,0.08);
+      border-radius:30px;padding:5px 6px;backdrop-filter:blur(8px)
+    }
+    .style-opt{
+      font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.78rem;letter-spacing:1.5px;
+      text-transform:uppercase;padding:6px 18px;border-radius:24px;cursor:pointer;border:none;
+      background:transparent;color:rgba(226,232,240,0.4);transition:all 0.22s
+    }
+    .style-opt.active{background:rgba(255,255,255,0.1);color:#e2e8f0;box-shadow:0 2px 10px rgba(0,0,0,0.3)}
+    .style-opt.active.normal-opt{background:linear-gradient(135deg,rgba(244,63,94,0.2),rgba(168,85,247,0.2));color:#f43f5e;border:1px solid rgba(244,63,94,0.3)}
+    .style-opt.active.poke-opt{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.35)}
+
+    /* ── Phase badge ── */
+    .phase-badge{font-family:'Orbitron',monospace;font-size:clamp(0.6rem,1.4vw,0.75rem);letter-spacing:4px;text-transform:uppercase;padding:6px 20px;border-radius:20px;transition:all 0.4s}
+    .phase-badge.memorize{background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.35);color:#fbbf24;box-shadow:0 0 20px rgba(251,191,36,0.15)}
+    .phase-badge.recall{background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.35);color:#a855f7;box-shadow:0 0 20px rgba(168,85,247,0.15)}
+
+    /* ── Progress ── */
+    .prog-bar{width:clamp(240px,50vw,420px);height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    .prog-fill{height:100%;background:linear-gradient(90deg,#f43f5e,#a855f7);border-radius:2px;transition:width 0.4s ease;box-shadow:0 0 10px rgba(244,63,94,0.3)}
+
+    /* ── Arena ── */
+    .arena{display:flex;flex-direction:column;align-items:center;gap:clamp(16px,3vh,28px);background:rgba(14,14,32,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:clamp(16px,3vh,24px) clamp(20px,3vw,32px);backdrop-filter:blur(10px);box-shadow:0 8px 60px rgba(0,0,0,0.5)}
+    .slots-section{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
+    .section-label{font-size:0.7rem;letter-spacing:3px;text-transform:uppercase;color:rgba(226,232,240,0.4);font-weight:500}
+    .slots-row,.balls-row{display:flex;gap:clamp(10px,2vw,16px);align-items:center;justify-content:center;flex-wrap:wrap;width:100%}
+    .divider{width:100%;height:1px;background:rgba(255,255,255,0.06)}
+
+    /* ── Slot ── */
+    .slot{position:relative;border-radius:50%;transition:all 0.3s;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px dashed rgba(255,255,255,0.12);background:rgba(255,255,255,0.03)}
+    .slot.filled{border-style:solid;border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.05)}
+    .slot.highlight{border-color:rgba(168,85,247,0.5);background:rgba(168,85,247,0.08);box-shadow:0 0 20px rgba(168,85,247,0.2)}
+    .slot.correct{animation:correctPulse 0.5s ease;box-shadow:0 0 25px rgba(34,197,94,0.5);border-color:#22c55e}
+    .slot.wrong{animation:wrongShake 0.4s ease;box-shadow:0 0 25px rgba(239,68,68,0.5);border-color:#ef4444}
+    @keyframes correctPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    @keyframes wrongShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+    /* ── Ball ── */
+    .ball{
+      border-radius:50%;cursor:pointer;flex-shrink:0;
+      transition:transform 0.18s,box-shadow 0.18s,opacity 0.3s;
+      position:relative;
+      background-size:contain;background-position:center;background-repeat:no-repeat
+    }
+    /* Shine — shown in normal image mode, hidden in pokeball mode */
+    .ball::before{
+      content:'';position:absolute;width:32%;height:32%;top:12%;left:16%;
+      background:rgba(255,255,255,0.42);border-radius:50%;pointer-events:none;transition:opacity 0.2s
+    }
+    .ball.pokeball-style::before{opacity:0}
+
+    .ball:hover:not(.placed){transform:scale(1.08)}
+    .ball.selected{transform:scale(1.12);outline:3px solid rgba(255,255,255,0.6);outline-offset:2px}
+    .ball.placed{opacity:0.22;cursor:default;pointer-events:none;transform:scale(0.9)}
+
+    /* ── Status / buttons ── */
+    .status-msg{font-family:'Orbitron',monospace;font-size:clamp(0.65rem,1.4vw,0.8rem);letter-spacing:2px;text-transform:uppercase;min-height:24px;text-align:center;color:rgba(226,232,240,0.4);transition:all 0.3s}
+    .status-msg.good{color:#22c55e;filter:drop-shadow(0 0 8px rgba(34,197,94,0.5))}
+    .status-msg.bad{color:#ef4444;filter:drop-shadow(0 0 8px rgba(239,68,68,0.5))}
+    .status-msg.win{color:#a855f7;filter:drop-shadow(0 0 10px rgba(168,85,247,0.7))}
+    .btn-row{display:flex;gap:12px}
+    .btn{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.85rem;letter-spacing:2px;text-transform:uppercase;padding:10px 24px;border:1px solid rgba(255,255,255,0.1);background:rgba(14,14,32,0.6);color:rgba(226,232,240,0.7);border-radius:8px;cursor:pointer;transition:all 0.18s}
+    .btn:hover{background:rgba(255,255,255,0.08);color:#e2e8f0;border-color:rgba(255,255,255,0.25);transform:translateY(-2px)}
+    .btn.primary{background:rgba(244,63,94,0.1);color:#f43f5e;border-color:rgba(244,63,94,0.3)}
+    .btn.primary:hover{background:rgba(244,63,94,0.2)}
+    /* ── Quick Nav ── */
+    .qnav{position:fixed;top:14px;left:14px;z-index:9000;font-family:'Rajdhani',sans-serif}
+    .qnav-btn{width:38px;height:38px;background:rgba(14,14,32,0.88);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#e2e8f0;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);transition:all 0.18s;font-size:1.15rem;line-height:1}
+    .qnav-btn:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.3);transform:scale(1.05)}
+    .qnav-drop{position:absolute;top:46px;left:0;background:rgba(8,8,22,0.97);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px;min-width:178px;display:none;flex-direction:column;gap:2px;box-shadow:0 10px 40px rgba(0,0,0,0.75);backdrop-filter:blur(18px)}
+    .qnav.open .qnav-drop{display:flex}
+    .qnav-head{font-family:'Orbitron',monospace;font-size:0.52rem;letter-spacing:5px;color:rgba(226,232,240,0.25);padding:5px 10px 9px;text-align:center}
+    .qnav-div{height:1px;background:rgba(255,255,255,0.07);margin:3px 0}
+    .qnav-link{font-size:0.88rem;letter-spacing:1px;color:rgba(226,232,240,0.6);text-decoration:none;padding:7px 12px;border-radius:7px;display:block;transition:all 0.15s}
+    .qnav-link:hover{background:rgba(255,255,255,0.08);color:#e2e8f0}
+    .qnav-link.ql-home{color:#fbbf24}
+    .qnav-link.ql-home:hover{background:rgba(251,191,36,0.1)}
+    .qnav-link.ql-cur{color:#f43f5e;background:rgba(244,63,94,0.08)}
+  </style>
+</head>
+<body>
+  <!-- Quick Nav -->
+  <nav class="qnav" id="qnav">
+    <button class="qnav-btn" onclick="qnavToggle()" title="Games menu">☰</button>
+    <div class="qnav-drop">
+      <div class="qnav-head">4CADE</div>
+      <div class="qnav-div"></div>
+      <a class="qnav-link ql-home" href="/gameselect">⌂ &nbsp;Home</a>
+      <div class="qnav-div"></div>
+      <a class="qnav-link"        href="/pacman">Pac-Man</a>
+      <a class="qnav-link"        href="/2048">2048</a>
+      <a class="qnav-link"        href="/tictactoe">Tic-Tac-Toe</a>
+      <a class="qnav-link"        href="/memory">Pattern Memory</a>
+      <a class="qnav-link"        href="/cardmatch">Card Match</a>
+      <a class="qnav-link ql-cur" href="/ballmatch">Ball Memory ✦</a>
+    </div>
+  </nav>
+  <div class="stars" id="stars"></div>
+  <div class="wrap">
+    <div class="title">BALL MEMORY</div>
+
+    <div class="hud">
+      <div class="hud-item"><div class="hud-lbl">Level</div><div class="hud-val" id="lvlVal">1</div></div>
+      <div class="hud-item"><div class="hud-lbl">Score</div><div class="hud-val" id="scoreVal">0</div></div>
+      <div class="hud-item">
+        <div class="hud-lbl">Lives</div>
+        <div class="lives-row" id="livesRow">
+          <span class="heart">❤️</span><span class="heart">❤️</span><span class="heart">❤️</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ball style toggle -->
+    <div class="style-toggle">
+      <button class="style-opt normal-opt active" id="optNormal" onclick="setBallStyle('normal')">🎨 Normal</button>
+      <button class="style-opt poke-opt"          id="optPoke"   onclick="setBallStyle('pokeball')">🔴 PokéBall</button>
+    </div>
+
+    <div class="phase-badge waiting" id="phaseBadge">GET READY</div>
+    <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+
+    <div class="arena">
+      <div class="slots-section">
+        <div class="section-label">Memorize positions</div>
+        <div class="slots-row" id="slotsRow"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="slots-section">
+        <div class="section-label">Select ball then slot</div>
+        <div class="balls-row" id="ballsRow"></div>
+      </div>
+    </div>
+
+    <div class="status-msg" id="statusMsg">Watch carefully...</div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="newGame()">New Game</button>
+      <a href="/gameselect"><button class="btn">⌂ Home</button></a>
+    </div>
+  </div>
+
+  <script>
+    /* ── Stars ── */
+    const starsEl = document.getElementById('stars');
+    for (let i = 0; i < 60; i++) {
+      const s = document.createElement('div'); s.className = 'star';
+      s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${2+Math.random()*4}s;--dl:${Math.random()*4}s`;
+      starsEl.appendChild(s);
+    }
+
+    /* ══════════════════════════════════════════════════════
+       SFX — Web Audio API sound engine (no files needed)
+    ══════════════════════════════════════════════════════ */
+    const SFX = (() => {
+      let ac = null;
+      function getAC() {
+        if (!ac) try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+        return ac;
+      }
+      function tone(freq, type, t, dur, vol, endFreq) {
+        const a = getAC(); if (!a) return;
+        const osc = a.createOscillator(), g = a.createGain();
+        osc.connect(g); g.connect(a.destination);
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+        if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, t + dur);
+        g.gain.setValueAtTime(vol || 0.12, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.start(t); osc.stop(t + dur + 0.01);
+      }
+      return {
+        /* Soft reveal sweep when balls appear during memorize phase */
+        memorize() {
+          const a = getAC(); if (!a) return;
+          const t = a.currentTime;
+          tone(440, 'sine', t,      0.10, 0.08, 660);
+          tone(660, 'sine', t+0.12, 0.10, 0.06, 880);
+        },
+        /* Alert ping when recall phase begins — "now go!" */
+        recall() {
+          const a = getAC(); if (!a) return;
+          const t = a.currentTime;
+          tone(880, 'sine', t,      0.06, 0.10);
+          tone(660, 'sine', t+0.08, 0.08, 0.08);
+        },
+        /* Crisp click when selecting a ball */
+        selectBall() {
+          const a = getAC(); if (!a) return;
+          const t = a.currentTime;
+          tone(600, 'square', t,      0.04, 0.08);
+          tone(800, 'square', t+0.03, 0.04, 0.06);
+        },
+        /* Bright ping on a correct placement */
+        correct() {
+          const a = getAC(); if (!a) return;
+          const t = a.currentTime;
+          tone(660,  'sine', t,      0.08, 0.12);
+          tone(880,  'sine', t+0.07, 0.08, 0.10);
+          tone(1100, 'sine', t+0.15, 0.10, 0.08);
+        },
+        /* Buzzy thud on a wrong placement */
+        wrong() {
+          const a = getAC(); if (!a) return;
+          const t = a.currentTime;
+          tone(200, 'sawtooth', t,      0.09, 0.14, 150);
+          tone(150, 'sawtooth', t+0.10, 0.10, 0.10, 110);
+        },
+        /* Fanfare for a perfect level — all balls correct */
+        perfect() {
+          const a = getAC(); if (!a) return;
+          const t = a.currentTime;
+          [[392,0],[494,0.09],[587,0.18],[784,0.28],[987,0.40]].forEach(([f,d]) => {
+            tone(f, 'square', t+d, 0.12, 0.10);
+          });
+        },
+        /* Short advance jingle for level complete (not perfect) */
+        levelUp() {
+          const a = getAC(); if (!a) return;
+          const t = a.currentTime;
+          tone(440, 'square', t,      0.08, 0.09);
+          tone(550, 'square', t+0.09, 0.08, 0.08);
+          tone(660, 'square', t+0.18, 0.10, 0.09);
+        },
+        /* Descending doom on game over */
+        gameOver() {
+          const a = getAC(); if (!a) return;
+          const t = a.currentTime;
+          [[330,0],[294,0.15],[262,0.30],[220,0.48],[165,0.68],[110,0.90]].forEach(([f,d]) => {
+            tone(f, 'sawtooth', t+d, 0.15, 0.11);
+          });
+        }
+      };
+    })();
+
+    /* ════════════════════════════════════════════════════
+       BALL COLORS
+       img  → PNG filename in /static/images/ used by PokéBall mode
+       hex  → base color used by Normal (CSS gradient) mode
+    ════════════════════════════════════════════════════ */
+    const BALL_COLORS = [
+      { hex: '#ef4444', glow: 'rgba(239,68,68,0.7)',  name: 'Red',    img: 'RedBall.png'    },
+      { hex: '#3b82f6', glow: 'rgba(59,130,246,0.7)', name: 'Blue',   img: 'BlueBall.png'   },
+      { hex: '#22c55e', glow: 'rgba(34,197,94,0.7)',  name: 'Green',  img: 'GreenBall.png'  },
+      { hex: '#fbbf24', glow: 'rgba(251,191,36,0.7)', name: 'Yellow', img: 'YellowBall.png' },
+      { hex: '#a855f7', glow: 'rgba(168,85,247,0.7)', name: 'Purple', img: 'PurpleBall.png' },
+      { hex: '#06b6d4', glow: 'rgba(6,182,212,0.7)',  name: 'Cyan',   img: 'CyanBall.png'   },
+      { hex: '#f97316', glow: 'rgba(249,115,22,0.7)', name: 'Orange', img: 'OrangeBall.png' },
+      { hex: '#ec4899', glow: 'rgba(236,72,153,0.7)', name: 'Pink',   img: 'WhiteBall.png'  }
+    ];
+
+    /* ════════════════════════════════════════════════════
+       BALL STYLE SYSTEM
+       'normal'   → CSS radial-gradient 3D ball (no images needed)
+       'pokeball' → RedBall.png / BlueBall.png etc. from /static/images/
+    ════════════════════════════════════════════════════ */
+    let ballStyle = 'normal';
+
+    /* Lighten a hex color for the CSS gradient highlight */
+    function lightenHex(hex, amt = 90) {
+      const r = parseInt(hex.slice(1,3), 16);
+      const g = parseInt(hex.slice(3,5), 16);
+      const b = parseInt(hex.slice(5,7), 16);
+      return `rgb(${Math.min(255,r+amt)},${Math.min(255,g+amt)},${Math.min(255,b+amt)})`;
+    }
+
+    function getBallCSS(colorObj) {
+      if (ballStyle === 'pokeball') {
+        /* PokéBall mode — use the actual PNG images */
+        return {
+          background : `url('/static/images/${colorObj.img}') center/contain no-repeat`,
+          boxShadow  : `0 0 20px ${colorObj.glow}`
+        };
+      }
+      /* Normal mode — CSS 3D gradient ball, always works without image files */
+      const light = lightenHex(colorObj.hex, 90);
+      const mid   = lightenHex(colorObj.hex, 20);
+      return {
+        background : `radial-gradient(circle at 34% 28%, ${light}, ${mid} 45%, ${colorObj.hex} 75%)`,
+        boxShadow  : `0 6px 20px ${colorObj.glow}, inset 0 -4px 8px rgba(0,0,0,0.25)`
+      };
+    }
+
+    function setBallStyle(style) {
+      ballStyle = style;
+      document.getElementById('optNormal').classList.toggle('active', style === 'normal');
+      document.getElementById('optPoke').classList.toggle('active',   style === 'pokeball');
+      /* Re-render current phase immediately */
+      if (phase === 'memorize') { renderSlots(true);  renderBalls(false); }
+      if (phase === 'recall')   { renderSlots(false); renderBalls(true);  }
+    }
+
+    /* ── Game state ── */
+    let level = 1, score = 0, lives = 3;
+    let slots = [], balls = [], selectedBall = null, phase = 'idle';
+    let revealTimer = null;
+
+    function numBalls()   { return Math.min(3 + level - 1, 8); }
+    function revealTime() { return Math.max(800, 2400 - (level - 1) * 150); }
+    function slotSize() {
+      const n = numBalls();
+      const availW = Math.min(window.innerWidth - 100, 600);
+      const byW = Math.floor((availW - (n - 1) * 16) / n);
+      return Math.max(48, Math.min(72, byW));
+    }
+
+    /* ── New Game — full reset ── */
+    function newGame() {
+      clearTimeout(revealTimer);
+      level = 1; score = 0; lives = 3;
+      slots = []; balls = []; selectedBall = null; phase = 'idle';
+      startLevel();
+    }
+
+    /* ── Level start ── */
+    function startLevel() {
+      clearTimeout(revealTimer);
+      const n      = numBalls();
+      const colors = shuffle([...BALL_COLORS]).slice(0, n);
+      slots = colors.map((c, i) => ({ id: i, color: c, placed: null, correct: false }));
+      balls = shuffle(colors.map((c, i) => ({ id: i, color: c, placed: false })));
+      selectedBall = null;
+      phase = 'memorize';
+      updateHud();
+      renderSlots(true);
+      renderBalls(false);
+      setPhase('memorize');
+      setMsg('Memorize the pattern!', '');
+      SFX.memorize();
+      revealTimer = setTimeout(() => {
+        phase = 'recall';
+        renderSlots(false);
+        setPhase('recall');
+        renderBalls(true);
+        setMsg('Click ball, then slot', '');
+        SFX.recall();
+      }, revealTime());
+    }
+
+    /* ── Apply ball visuals to a DOM element ── */
+    function applyBallStyle(el, colorObj) {
+      const css = getBallCSS(colorObj);
+      el.style.background = css.background;
+      el.style.boxShadow  = css.boxShadow;
+      el.style.border     = 'none';
+      if (css.isPokeball) el.classList.add('pokeball-style');
+      else                el.classList.remove('pokeball-style');
+    }
+
+    /* ── Render slots ── */
+    function renderSlots(showBalls) {
+      const row = document.getElementById('slotsRow');
+      const sz  = slotSize();
+      row.innerHTML = '';
+      slots.forEach((slot, i) => {
+        const el = document.createElement('div');
+        el.className = 'slot' + (slot.placed ? ' filled' : '');
+        el.style.width  = sz + 'px';
+        el.style.height = sz + 'px';
+        el.dataset.index = i;
+
+        if (showBalls && !slot.placed) {
+          applyBallStyle(el, slot.color);
+        } else if (slot.placed) {
+          applyBallStyle(el, slot.placed);
+        }
+
+        el.onclick = () => onSlotClick(i);
+        row.appendChild(el);
+      });
+    }
+
+    /* ── Render balls ── */
+    function renderBalls(interactive) {
+      const row = document.getElementById('ballsRow');
+      const sz  = slotSize();
+      row.innerHTML = '';
+      balls.forEach((b, i) => {
+        if (b.placed) return;
+        const el = document.createElement('div');
+        el.className = 'ball' + (selectedBall === i ? ' selected' : '');
+        el.style.width  = sz + 'px';
+        el.style.height = sz + 'px';
+        applyBallStyle(el, b.color);
+
+        if (interactive) {
+          el.onclick = () => onBallClick(i);
+        } else {
+          el.style.opacity = '0.5';
+          el.style.cursor  = 'default';
+        }
+        row.appendChild(el);
+      });
+    }
+
+    /* ── Interaction ── */
+    function onBallClick(i) {
+      if (phase !== 'recall') return;
+      selectedBall = i;
+      renderBalls(true);
+      document.querySelectorAll('.slot').forEach(s => s.classList.add('highlight'));
+      setMsg('Now click the slot', '');
+      SFX.selectBall();
+    }
+
+    function onSlotClick(i) {
+      if (phase !== 'recall' || selectedBall === null) return;
+      if (slots[i].placed !== null) { setMsg('Slot already filled!', 'bad'); return; }
+
+      const ball    = balls[selectedBall];
+      const correct = slots[i].color.name === ball.color.name;
+      slots[i].placed  = ball.color;
+      slots[i].correct = correct;
+      ball.placed = true;
+
+      const slotEl = document.querySelector(`.slot[data-index="${i}"]`);
+      slotEl.classList.remove('highlight');
+      slotEl.classList.add(correct ? 'correct' : 'wrong');
+      setTimeout(() => slotEl.classList.remove('correct', 'wrong'), 500);
+
+      if (correct) { score += 100 + level * 20; setMsg('Correct!', 'good'); SFX.correct(); }
+      else         { lives--;                    setMsg('Wrong!',   'bad');  SFX.wrong();   }
+
+      selectedBall = null;
+      document.querySelectorAll('.slot').forEach(s => s.classList.remove('highlight'));
+      updateHud();
+      renderSlots(false);
+      renderBalls(true);
+      updateProg();
+      checkEnd();
+    }
+
+    /* ── End check ── */
+    function checkEnd() {
+      if (!balls.every(b => b.placed)) return;
+      const correctCount = slots.filter(s => s.correct).length;
+      const total        = slots.length;
+      setTimeout(() => {
+        if (lives <= 0) {
+          phase = 'idle';
+          renderSlots(true);
+          setMsg(`Game Over! Score: ${score}`, 'bad');
+          SFX.gameOver();
+        } else if (correctCount === total) {
+          level++; score += 500;
+          setMsg('Perfect! Next level...', 'win');
+          SFX.perfect();
+          setTimeout(startLevel, 1200);
+        } else {
+          level++;
+          setMsg(`Level complete! ${correctCount}/${total}`, 'good');
+          SFX.levelUp();
+          setTimeout(startLevel, 1500);
+        }
+      }, 600);
+    }
+
+    /* ── Helpers ── */
+    function updateProg() {
+      const placed = balls.filter(b => b.placed).length;
+      document.getElementById('progFill').style.width = (placed / balls.length * 100) + '%';
+    }
+
+    function updateHud() {
+      document.getElementById('lvlVal').textContent   = level;
+      document.getElementById('scoreVal').textContent = score;
+      document.querySelectorAll('.heart').forEach((h, i) => h.classList.toggle('lost', i >= lives));
+    }
+
+    function setPhase(p) {
+      const el = document.getElementById('phaseBadge');
+      el.className   = 'phase-badge ' + p;
+      el.textContent = p === 'memorize' ? 'MEMORIZE' : p === 'recall' ? 'RECALL' : 'GET READY';
+    }
+
+    function setMsg(txt, cls) {
+      const m = document.getElementById('statusMsg');
+      m.className   = 'status-msg' + (cls ? ' ' + cls : '');
+      m.textContent = txt;
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    window.addEventListener('resize', () => {
+      if (phase === 'memorize') { renderSlots(true);  renderBalls(false); }
+      if (phase === 'recall')   { renderSlots(false); renderBalls(true);  }
+    });
+
+    updateHud();
+    newGame();
+
+    /* ── Quick Nav toggle ── */
+    function qnavToggle(){document.getElementById('qnav').classList.toggle('open')}
+    document.addEventListener('click',e=>{const n=document.getElementById('qnav');if(n&&!n.contains(e.target))n.classList.remove('open')});
+  </script>
+</body>
+</html>

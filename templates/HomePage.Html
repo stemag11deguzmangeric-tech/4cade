@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>4cade</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Press Start 2P', monospace;
+      cursor: crosshair;
+      overscroll-behavior: none
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.035) 2px, rgba(0, 0, 0, 0.035) 4px)
+    }
+
+    #scene {
+      position: fixed;
+      inset: 0;
+      overflow: hidden
+    }
+
+    .sky {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, #87CEEB 0%, #5bc8f5 40%, #a8e6f0 100%);
+      transition: opacity 0.1s
+    }
+
+    .sky.burned {
+      opacity: 0
+    }
+
+    .night-sky {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, #000308 0%, #000820 40%, #020d1a 100%);
+      opacity: 0;
+      transition: opacity 2s ease 1s
+    }
+
+    .night-sky.visible {
+      opacity: 1
+    }
+
+    #sun {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, #fffde0, #FFD700);
+      box-shadow: 0 0 40px rgba(255, 220, 0, 0.7), 0 0 80px rgba(255, 200, 0, 0.3);
+      top: 80px;
+      right: 140px;
+      transition: all 0.5s
+    }
+
+    #sun.burned {
+      transform: scale(1.5);
+      filter: brightness(3) sepia(1) hue-rotate(-30deg);
+      opacity: 0
+    }
+
+    #moon {
+      position: absolute;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff9e6, #ffeaa0);
+      box-shadow: 0 0 28px rgba(255, 235, 150, 0.5), 0 0 55px rgba(255, 235, 150, 0.2);
+      top: 80px;
+      right: 140px;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 1.5s ease 1.5s
+    }
+
+    #moon.visible {
+      opacity: 1;
+      transform: translateY(0)
+    }
+
+    #moon::after {
+      content: '';
+      position: absolute;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: rgba(200, 180, 100, 0.28);
+      top: 12px;
+      left: 16px
+    }
+
+    .scroll-layer {
+      position: absolute;
+      width: 200%;
+      will-change: transform
+    }
+
+    #starsDay {
+      top: 0;
+      height: 50vh;
+      animation: scrollBg 80s linear infinite;
+      transition: opacity 0.5s
+    }
+
+    #starsDay.burned {
+      opacity: 0
+    }
+
+    #nightStars {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 2s ease 1.2s;
+      pointer-events: none
+    }
+
+    #nightStars.visible {
+      opacity: 1
+    }
+
+    #mtnFar {
+      bottom: 148px;
+      height: 220px;
+      animation: scrollBg 30s linear infinite;
+      transition: filter 1s
+    }
+
+    #mtnNear {
+      bottom: 128px;
+      height: 200px;
+      animation: scrollBg 18s linear infinite;
+      transition: filter 1s
+    }
+
+    #treesLayer {
+      bottom: 118px;
+      height: 130px;
+      animation: scrollBg 11s linear infinite;
+      transition: filter 1s
+    }
+
+    #groundLayer {
+      bottom: 0;
+      height: 130px;
+      animation: scrollBg 18s linear infinite;
+      transition: filter 1s
+    }
+
+    .burned #mtnFar,
+    .burned #mtnNear,
+    .burned #treesLayer,
+    .burned #groundLayer {
+      filter: brightness(0.3) saturate(0.5)
+    }
+
+    .ground-base {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 44px;
+      background: #3d1f05;
+      transition: filter 1s
+    }
+
+    .burned .ground-base {
+      filter: brightness(0.3)
+    }
+
+    @keyframes scrollBg {
+      0% {
+        transform: translateX(0)
+      }
+
+      100% {
+        transform: translateX(-50%)
+      }
+    }
+
+    #landingScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.5s
+    }
+
+    #landingScreen.burning {
+      filter: brightness(2) contrast(1.5) sepia(1) hue-rotate(-20deg) blur(2px)
+    }
+
+    #landingScreen.burned {
+      opacity: 0;
+      pointer-events: none
+    }
+
+    .logo {
+      font-size: clamp(3.2rem, 10vw, 6.5rem);
+      color: #fff;
+      text-shadow: 6px 6px 0 #000, -2px -2px 0 #000;
+      letter-spacing: -3px;
+      line-height: 1;
+      display: flex;
+      align-items: baseline;
+      animation: logoFloat 3s ease-in-out infinite;
+      user-select: none;
+      margin-bottom: 18px
+    }
+
+    .logo .four {
+      color: #FFD700;
+      text-shadow: 6px 6px 0 #7a5c00, -2px -2px 0 #000, 0 0 40px rgba(255, 215, 0, 0.5);
+      font-size: 1.25em
+    }
+
+    @keyframes logoFloat {
+
+      0%,
+      100% {
+        transform: translateY(0)
+      }
+
+      50% {
+        transform: translateY(-12px)
+      }
+    }
+
+    .tagline {
+      font-family: 'VT323', monospace;
+      font-size: clamp(1.1rem, 2.8vw, 1.7rem);
+      color: #fff;
+      text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+      letter-spacing: 5px;
+      margin-bottom: 50px
+    }
+
+    .press-start-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(0.5rem, 1.4vw, 0.72rem);
+      color: #FFD700;
+      text-shadow: 3px 3px 0 #000;
+      letter-spacing: 3px;
+      padding: 14px 30px;
+      border: 3px solid #FFD700;
+      background: transparent;
+      cursor: pointer;
+      animation: blink 1.1s step-end infinite;
+      transition: background 0.15s, animation 0s
+    }
+
+    .press-start-btn:hover {
+      background: rgba(255, 215, 0, 0.1)
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.1
+      }
+    }
+
+    .hint {
+      margin-top: 14px;
+      font-family: 'VT323', monospace;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.4);
+      letter-spacing: 2px
+    }
+
+    #dragonCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      pointer-events: none
+    }
+
+    #gameScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.9);
+      filter: blur(10px);
+      transition: all 0.6s ease 2s
+    }
+
+    #gameScreen.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+      filter: blur(0)
+    }
+
+    .gs-logo {
+      font-size: clamp(1.6rem, 4.5vw, 2.8rem);
+      color: #fff;
+      text-shadow: 4px 4px 0 #000;
+      letter-spacing: -1px;
+      margin-bottom: 6px;
+      animation: logoFloat 3s ease-in-out infinite
+    }
+
+    .gs-logo .four {
+      color: #FFD700;
+      text-shadow: 4px 4px 0 #7a5c00, -1px -1px 0 #000;
+      font-size: 1.2em
+    }
+
+    .gs-sub {
+      font-family: 'VT323', monospace;
+      font-size: clamp(1rem, 2.5vw, 1.5rem);
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 4px;
+      margin-bottom: 28px
+    }
+
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, min(240px, 22vw)));
+      gap: clamp(12px, 2vw, 24px);
+      justify-content: center;
+      width: 100%;
+      max-width: 1200px
+    }
+
+    @media(max-width:900px) {
+      .games-grid {
+        grid-template-columns: repeat(2, minmax(0, min(280px, 45vw)))
+      }
+    }
+
+    @media(max-width:500px) {
+      .games-grid {
+        grid-template-columns: minmax(0, 90vw)
+      }
+    }
+
+    .game-card {
+      position: relative;
+      border: 4px solid #2e7d32;
+      border-bottom-color: #1b5e20;
+      border-right-color: #1b5e20;
+      background: #000;
+      cursor: pointer;
+      box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.8);
+      transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.5s ease, translate 0.5s ease;
+      opacity: 0;
+      translate: 0 36px
+    }
+
+    .game-card.in {
+      opacity: 1;
+      translate: 0 0
+    }
+
+    .game-card:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 9px 9px 0 rgba(0, 0, 0, 0.8)
+    }
+
+    .game-card:active {
+      transform: translate(2px, 2px);
+      box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.8)
+    }
+
+    .card-thumb {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/3;
+      overflow: hidden;
+      background: #000
+    }
+
+    .card-thumb img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block
+    }
+
+    .hover-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.85);
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(0.5rem, 1.2vw, 0.65rem);
+      color: #FFD700;
+      text-align: center;
+      letter-spacing: 2px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none
+    }
+
+    .game-card:hover .hover-label {
+      opacity: 1
+    }
+
+    .card-body {
+      padding: clamp(10px, 1.5vw, 14px);
+      background: #111;
+      border-top: 4px solid #2e7d32
+    }
+
+    .card-name {
+      font-size: clamp(0.55rem, 1.2vw, 0.75rem);
+      color: #fff;
+      margin-bottom: 6px;
+      text-shadow: 2px 2px 0 #000
+    }
+
+    .card-desc {
+      font-family: 'VT323', monospace;
+      font-size: clamp(0.85rem, 1.5vw, 1.1rem);
+      color: #777;
+      line-height: 1.4;
+      margin-bottom: 8px
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: clamp(0.4rem, 1vw, 0.55rem);
+      padding: 3px 8px;
+      letter-spacing: 1px;
+      background: #FFD700;
+      color: #000
+    }
+
+    .badge.purple {
+      background: #a855f7;
+      color: #fff
+    }
+
+    .expand-btn {
+      width: 100%;
+      padding: 10px;
+      background: #0a0a0a;
+      border: none;
+      border-top: 3px solid #2e7d32;
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(0.45rem, 1vw, 0.6rem);
+      color: #4CAF50;
+      cursor: pointer;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s
+    }
+
+    .expand-btn:hover {
+      background: #141414
+    }
+
+    .expand-arrow {
+      transition: transform 0.2s;
+      display: inline-block;
+      font-size: 0.7rem
+    }
+
+    .expand-arrow.open {
+      transform: rotate(180deg)
+    }
+
+    .submenu {
+      display: none;
+      background: #0d0d0d;
+      border-top: 2px solid #1a1a1a
+    }
+
+    .submenu.open {
+      display: block
+    }
+
+    .sub-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 2px solid #141414;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s
+    }
+
+    .sub-item:hover {
+      background: #171717
+    }
+
+    .sub-item:last-child {
+      border-bottom: none
+    }
+
+    .sub-icon {
+      font-size: 1.1rem;
+      width: 24px;
+      text-align: center
+    }
+
+    .sub-text {
+      font-family: 'VT323', monospace;
+      font-size: clamp(1rem, 1.8vw, 1.2rem);
+      color: #ccc
+    }
+
+    .sub-arrow {
+      margin-left: auto;
+      color: #444;
+      font-size: 0.7rem
+    }
+
+    .coin-fx {
+      position: fixed;
+      width: 14px;
+      height: 14px;
+      background: #FFD700;
+      border: 2px solid #b8860b;
+      pointer-events: none;
+      z-index: 9998;
+      animation: coinPop 0.85s ease-out forwards
+    }
+
+    @keyframes coinPop {
+      0% {
+        transform: translateY(0) scale(1);
+        opacity: 1
+      }
+
+      100% {
+        transform: translateY(-70px) scale(0.1);
+        opacity: 0
+      }
+    }
+
+    .pixel-dots {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 12px
+    }
+
+    .pdot {
+      width: 8px;
+      height: 8px;
+      background: #FFD700;
+      animation: pdot 1.1s step-end infinite
+    }
+
+    .pdot:nth-child(2) {
+      animation-delay: 0.37s
+    }
+
+    .pdot:nth-child(3) {
+      animation-delay: 0.74s
+    }
+
+    @keyframes pdot {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="scene">
+    <div class="sky" id="sky"></div>
+    <div class="night-sky" id="nightSky"></div>
+    <canvas id="nightStars" height="200"></canvas>
+    <canvas id="starsDay" class="scroll-layer" height="300"></canvas>
+    <canvas id="cloudsCanvas" class="scroll-layer" height="200"
+      style="top:30px;animation:scrollBg 35s linear infinite"></canvas>
+    <div id="sun"></div>
+    <div id="moon"></div>
+    <canvas id="mtnFar" class="scroll-layer" height="220"></canvas>
+    <canvas id="mtnNear" class="scroll-layer" height="200"></canvas>
+    <canvas id="treesLayer" class="scroll-layer" height="130"></canvas>
+    <canvas id="groundLayer" class="scroll-layer" height="130"></canvas>
+    <div class="ground-base"></div>
+  </div>
+  <canvas id="dragonCanvas"></canvas>
+  <div id="landingScreen">
+    <div class="logo"><span class="four">4</span><span>cade</span></div>
+    <div class="tagline">THE ULTIMATE ARCADE EXPERIENCE</div>
+    <button class="press-start-btn" onclick="pressStart(event)">&#9658;&nbsp;PRESS START</button>
+    <div class="hint">or press SPACE / ENTER</div>
+  </div>
+  <div id="gameScreen">
+    <div class="gs-logo"><span class="four">4</span><span>cade</span></div>
+    <div class="gs-sub">SELECT YOUR GAME</div>
+    <div class="pixel-dots">
+      <div class="pdot"></div>
+      <div class="pdot"></div>
+      <div class="pdot"></div>
+    </div>
+    <div class="games-grid">
+      <div class="game-card" id="card0" onclick="go('/pacman',event)">
+        <div class="card-thumb">
+          <img src="/static/images/Pacman.webp" alt="Pac-Man">
+          <div class="hover-label">&#9654;&nbsp;PLAY NOW</div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">PAC-MAN</div>
+          <div class="card-desc">Eat dots. Avoid ghosts.</div>
+          <span class="badge">ARCADE</span>
+        </div>
+      </div>
+      <div class="game-card" id="card1" onclick="go('/2048',event)">
+        <div class="card-thumb">
+          <img src="/static/images/2048.png" alt="2048">
+          <div class="hover-label">&#9654;&nbsp;PLAY NOW</div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">2048</div>
+          <div class="card-desc">Slide. Merge. Win.</div>
+          <span class="badge">PUZZLE</span>
+        </div>
+      </div>
+      <div class="game-card" id="card2" onclick="go('/tictactoe',event)">
+        <div class="card-thumb">
+          <img src="/static/images/TicTacToe.webp" alt="Tic-Tac-Toe">
+          <div class="hover-label">&#9654;&nbsp;PLAY NOW</div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">TIC-TAC-TOE</div>
+          <div class="card-desc">X vs O. Friend or CPU.</div>
+          <span class="badge">STRATEGY</span>
+        </div>
+      </div>
+      <div class="game-card" id="card3">
+        <div class="card-thumb" onclick="toggleMem(event)">
+          <img src="/static/images/Pattern.jpg" alt="Memory">
+          <div class="hover-label">&#9654;&nbsp;EXPAND</div>
+        </div>
+        <div class="card-body" onclick="toggleMem(event)">
+          <div class="card-name">MEMORY</div>
+          <div class="card-desc">Three challenges.</div>
+          <span class="badge purple">3 MODES</span>
+        </div>
+        <button class="expand-btn" onclick="toggleMem(event)">
+          <span>CHOOSE MODE</span>
+          <span class="expand-arrow" id="exArrow">&#9660;</span>
+        </button>
+        <div class="submenu" id="memSub">
+          <a class="sub-item" href="/memory">
+            <span class="sub-icon">&#128306;</span>
+            <span class="sub-text">Pattern</span>
+            <span class="sub-arrow">&#9654;</span>
+          </a>
+          <a class="sub-item" href="/cardmatch">
+            <span class="sub-icon">&#127183;</span>
+            <span class="sub-text">Cards</span>
+            <span class="sub-arrow">&#9654;</span>
+          </a>
+          <a class="sub-item" href="/ballmatch">
+            <span class="sub-icon">&#128302;</span>
+            <span class="sub-text">Balls</span>
+            <span class="sub-arrow">&#9654;</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const px = (ctx, x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h) };
+
+    function drawNightStars(cv) {
+      const ctx = cv.getContext('2d');
+      cv.width = window.innerWidth;
+      cv.height = window.innerHeight;
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      for (let i = 0; i < 300; i++) {
+        const b = 180 + Math.floor(Math.random() * 75);
+        const s = Math.random() < 0.08 ? 3 : Math.random() < 0.3 ? 2 : 1;
+        ctx.fillStyle = `rgba(${b},${b},${b + 20},${0.5 + Math.random() * 0.5})`;
+        ctx.fillRect(Math.random() * cv.width, Math.random() * cv.height * 0.7, s, s);
+      }
+    }
+
+    function drawClouds(cv) {
+      cv.width = (cv.offsetWidth || 1400) * 2;
+      const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
+      ctx.clearRect(0, 0, w, h);
+      const cloudPositions = [[80, 40], [260, 20], [420, 55], [600, 25], [780, 45], [960, 15], [1140, 50], [1320, 30], [1500, 42], [1680, 22], [1860, 48]];
+      cloudPositions.forEach(([cx, cy]) => {
+        ctx.fillStyle = 'rgba(255,255,255,0.88)';
+        [[0, 0, 60, 30], [20, -14, 50, 28], [40, 0, 55, 30], [-10, 4, 40, 22], [55, 4, 45, 22]].forEach(([dx, dy, cw, ch]) => {
+          ctx.beginPath();
+          ctx.ellipse(cx + dx + cw / 2, cy + dy + ch / 2, cw / 2, ch / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      });
+    }
+
+    function drawMtnFar(cv) {
+      cv.width = (cv.offsetWidth || 1400) * 2;
+      const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
+      ctx.clearRect(0, 0, w, h);
+      [[[0, 0.35, 0.1, 0.1, 0.22, 0.28, 0.35, 0.05, 0.48, 0.22, 0.6, 0.08, 0.72, 0.3, 0.85, 0.12, 1.0, 0.25], '#4a7ab5'], [[0, 0.5, 0.12, 0.2, 0.28, 0.45, 0.42, 0.15, 0.56, 0.4, 0.7, 0.18, 0.84, 0.38, 1.0, 0.3], '#3a6090']].forEach(([pts, c]) => {
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.moveTo(0, h);
+        for (let i = 0; i < pts.length; i += 2)ctx.lineTo(pts[i] * w, pts[i + 1] * h);
+        ctx.lineTo(w, h);
+        ctx.closePath();
+        ctx.fill();
+      });
+    }
+
+    function drawMtnNear(cv) {
+      cv.width = (cv.offsetWidth || 1400) * 2;
+      const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
+      ctx.clearRect(0, 0, w, h);
+      const cols = ['#2e5e38', '#3a7044', '#264d2e'];
+      let x = 0;
+      while (x < w) {
+        const mw = 100 + Math.floor(Math.random() * 200), mh = 70 + Math.floor(Math.random() * 130);
+        ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+        ctx.beginPath();
+        ctx.moveTo(x, h);
+        ctx.lineTo(x + mw * 0.5, h - mh);
+        ctx.lineTo(x + mw, h);
+        ctx.closePath();
+        ctx.fill();
+        x += mw - 16;
+      }
+    }
+
+    function drawTrees(cv) {
+      cv.width = (cv.offsetWidth || 1400) * 2;
+      const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
+      ctx.clearRect(0, 0, w, h);
+      const S = 8;
+      function tree(tx, ty, sz) {
+        const s = sz * S;
+        px(ctx, tx + s * 1.5, ty + s * 4, s, s * 2, '#4a2008');
+        px(ctx, tx, ty + s * 2, s * 4, s * 2, '#2e7d32');
+        px(ctx, tx + s, ty + s, s * 2, s, '#2e7d32');
+        px(ctx, tx + s * 0.5, ty + s * 3, s * 3, s, '#388e3c');
+        px(ctx, tx + s * 0.5, ty + s * 2, s * 0.5, s, '#1b5e20');
+        px(ctx, tx + s * 3, ty + s * 2.5, s * 0.5, s, '#1b5e20');
+      }
+      let x = 0, alt = false;
+      while (x < w) {
+        const sz = alt ? 3 : 2;
+        tree(x, h - sz * S * 6 - 2, sz);
+        x += sz * S * 4 + Math.floor(Math.random() * 20 + 4);
+        alt = !alt;
+      }
+    }
+
+    function drawGround(cv) {
+      cv.width = (cv.offsetWidth || 1400) * 2;
+      const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
+      ctx.clearRect(0, 0, w, h);
+      const S = 16;
+      const grass = ['#4CAF50', '#43A047', '#388E3C', '#66BB6A'];
+      const dirt = ['#8B5A2B', '#7a4f26', '#6B4226', '#9c6333'];
+      const cols2 = Math.ceil(w / S), rows = Math.ceil(h / S);
+      for (let r = 0; r < rows; r++)for (let c = 0; c < cols2; c++) {
+        ctx.fillStyle = (r === 0 ? grass : dirt)[(r * 7 + c * 3) % 4];
+        ctx.fillRect(c * S, r * S, S, S);
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillRect(c * S, r * S, 2, 2);
+      }
+    }
+
+    function drawDragon(cv, progress) {
+      const ctx = cv.getContext('2d');
+      cv.width = window.innerWidth;
+      cv.height = window.innerHeight;
+      const w = cv.width, h = cv.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const dragonY = h * 0.25 + Math.sin(progress * Math.PI) * 30;
+      const dragonX = w + 150 - progress * (w + 300);
+
+      ctx.save();
+      ctx.translate(dragonX, dragonY);
+      ctx.scale(-0.8, 0.8);
+
+      const bodyColor = '#2d3748';
+      const bellyColor = '#718096';
+      const wingColor = '#1a202c';
+      const hornColor = '#4a5568';
+
+      ctx.fillStyle = wingColor;
+      ctx.beginPath();
+      ctx.moveTo(20, -30);
+      ctx.quadraticCurveTo(80, -100, 140, -40);
+      ctx.quadraticCurveTo(100, 0, 40, 20);
+      ctx.fill();
+
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 100, 35, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = bellyColor;
+      ctx.beginPath();
+      ctx.ellipse(-10, 5, 70, 20, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = wingColor;
+      ctx.beginPath();
+      ctx.moveTo(0, 20);
+      ctx.quadraticCurveTo(60, 90, 130, 50);
+      ctx.quadraticCurveTo(80, 30, 20, 40);
+      ctx.fill();
+
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.moveTo(70, -20);
+      ctx.quadraticCurveTo(120, -50, 140, -10);
+      ctx.quadraticCurveTo(120, 20, 90, 10);
+      ctx.fill();
+
+      ctx.fillStyle = hornColor;
+      ctx.beginPath();
+      ctx.moveTo(130, -20);
+      ctx.lineTo(150, -50);
+      ctx.lineTo(140, -15);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(125, -15);
+      ctx.lineTo(145, -40);
+      ctx.lineTo(135, -10);
+      ctx.fill();
+
+      ctx.fillStyle = '#1a202c';
+      ctx.beginPath();
+      ctx.arc(125, -15, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fc8181';
+      ctx.beginPath();
+      ctx.arc(127, -15, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = '#2d3748';
+        ctx.beginPath();
+        ctx.moveTo(-80 + i * 30, 30);
+        ctx.lineTo(-90 + i * 30, 55);
+        ctx.lineTo(-70 + i * 30, 55);
+        ctx.fill();
+      }
+
+      ctx.restore();
+
+      if (progress > 0.25 && progress < 0.75) {
+        const fireX = dragonX - 100;
+        const fireY = dragonY + 5;
+        const fireIntensity = (progress - 0.25) / 0.5;
+
+        for (let i = 0; i < 50; i++) {
+          const angle = (Math.random() - 0.5) * 0.6;
+          const dist = Math.random() * 300 * fireIntensity;
+          const fx = fireX - Math.cos(angle) * dist;
+          const fy = fireY + Math.sin(angle) * dist * (0.5 + Math.random() * 0.5);
+          const size = Math.random() * 20 + 8;
+          const alpha = Math.max(0, 1 - dist / 250);
+
+          const gradient = ctx.createRadialGradient(fx, fy, 0, fx, fy, size);
+          gradient.addColorStop(0, `rgba(255,255,200,${alpha})`);
+          gradient.addColorStop(0.3, `rgba(255,200,50,${alpha * 0.9})`);
+          gradient.addColorStop(0.6, `rgba(255,100,0,${alpha * 0.7})`);
+          gradient.addColorStop(1, `rgba(255,0,0,0)`);
+
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(fx, fy, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.globalCompositeOperation = 'destination-out';
+        for (let i = 0; i < 30; i++) {
+          const angle = (Math.random() - 0.5) * 0.5;
+          const dist = Math.random() * 200 * fireIntensity;
+          const fx = fireX - Math.cos(angle) * dist;
+          const fy = fireY + Math.sin(angle) * dist * 0.6;
+          const size = Math.random() * 30 + 15;
+
+          const burnGradient = ctx.createRadialGradient(fx, fy, 0, fx, fy, size);
+          burnGradient.addColorStop(0, 'rgba(0,0,0,0.8)');
+          burnGradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+          ctx.fillStyle = burnGradient;
+          ctx.beginPath();
+          ctx.arc(fx, fy, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+      }
+    }
+
+    let transitioned = false;
+
+    function playDragonBurn() {
+      const canvas = document.getElementById('dragonCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      let startTime = null;
+      const duration = 2000;
+
+      function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const progress = (timestamp - startTime) / duration;
+
+        if (progress < 1) {
+          drawDragon(canvas, progress);
+          requestAnimationFrame(animate);
+        } else {
+          canvas.style.display = 'none';
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function pressStart(e) {
+      if (transitioned) return;
+      transitioned = true;
+      if (e) spawnCoin(e);
+
+      playDragonBurn();
+
+      document.getElementById('landingScreen').classList.add('burning');
+
+      setTimeout(() => {
+        document.getElementById('landingScreen').classList.add('burned');
+        document.getElementById('sky').classList.add('burned');
+        document.getElementById('sun').classList.add('burned');
+        document.getElementById('starsDay').classList.add('burned');
+        document.getElementById('scene').classList.add('burned');
+      }, 300);
+
+      setTimeout(() => {
+        document.getElementById('nightSky').classList.add('visible');
+        document.getElementById('moon').classList.add('visible');
+        drawNightStars(document.getElementById('nightStars'));
+        document.getElementById('nightStars').classList.add('visible');
+      }, 800);
+
+      setTimeout(() => {
+        const gs = document.getElementById('gameScreen');
+        gs.classList.add('visible');
+
+        [0, 1, 2, 3].forEach(i => {
+          setTimeout(() => document.getElementById('card' + i).classList.add('in'), i * 130);
+        });
+      }, 2200);
+    }
+
+    function go(url, e) {
+      spawnCoin(e);
+      setTimeout(() => { window.location.href = url }, 360);
+    }
+
+    function toggleMem(e) {
+      e.stopPropagation();
+      const open = document.getElementById('memSub').classList.toggle('open');
+      document.getElementById('exArrow').classList.toggle('open', open);
+    }
+
+    function spawnCoin(e) {
+      const d = document.createElement('div');
+      d.className = 'coin-fx';
+      d.style.left = (e.clientX - 7) + 'px';
+      d.style.top = (e.clientY - 7) + 'px';
+      document.body.appendChild(d);
+      setTimeout(() => d.remove(), 900);
+    }
+
+    document.addEventListener('keydown', e => {
+      if ((e.code === 'Space' || e.code === 'Enter') && !transitioned) {
+        e.preventDefault();
+        pressStart({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
+      }
+    });
+
+    document.addEventListener('click', e => {
+      if (!document.getElementById('card3').contains(e.target)) {
+        document.getElementById('memSub').classList.remove('open');
+        document.getElementById('exArrow').classList.remove('open');
+      }
+    });
+
+    window.addEventListener('load', () => {
+      drawClouds(document.getElementById('cloudsCanvas'));
+      drawMtnFar(document.getElementById('mtnFar'));
+      drawMtnNear(document.getElementById('mtnNear'));
+      drawTrees(document.getElementById('treesLayer'));
+      drawGround(document.getElementById('groundLayer'));
+    });
+
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        drawClouds(document.getElementById('cloudsCanvas'));
+        drawMtnFar(document.getElementById('mtnFar'));
+        drawMtnNear(document.getElementById('mtnNear'));
+        drawTrees(document.getElementById('treesLayer'));
+        drawGround(document.getElementById('groundLayer'));
+      }, 100);
+    });
+  </script>
+</body>
+
+</html>
